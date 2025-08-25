@@ -1,0 +1,42 @@
+name: Build & Deploy to OpenShift
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.OPENSHIFT_IMAGE }} .
+
+      - name: Log in to OpenShift internal registry
+        run: |
+          echo "${{ secrets.OPENSHIFT_PASSWORD }}" | docker login -u "${{ secrets.OPENSHIFT_USER }}" --password-stdin ${{ secrets.OPENSHIFT_REGISTRY }}
+
+      - name: Push image to OpenShift internal registry
+        run: |
+          docker push ${{ secrets.OPENSHIFT_IMAGE }}
+
+      - name: Trigger Knative rollout
+        run: |
+          oc rollout restart ksvc spring-openshift-git -n sunny423374-dev
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
