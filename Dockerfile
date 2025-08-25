@@ -16,4 +16,10 @@ VOLUME /tmp
 WORKDIR /app
 
 # Copy the JAR from the builder stage
-COPY --from=b
+COPY --from=build /app/target/*.jar app.jar
+
+# Expose port
+EXPOSE 8080
+
+# Run the app
+ENTRYPOINT ["java", "-jar", "app.jar"]
